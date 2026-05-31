@@ -13,8 +13,4 @@ export async function aiComplete(prompt) {
 }
 
 export function extractJSON(text, type = "array") {
-  const pattern = type === "array" ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
-  const match = text.match(pattern);
-  if (!match) throw new Error("No JSON found in response");
-  return JSON.parse(match[0]);
-}
+  let clean = text.replace(/```json\s*/gi, "").replace
