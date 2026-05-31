@@ -16,12 +16,12 @@ function save(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 }
 
-function RecCard({ rec, savedRating, onRate, onNotInterested, notInterested }) {
+function RecCard({ rec, savedRating, onRate, onNotInterested, notInterested, notTonight, onNotTonight }) {
   return (
     <div style={{
-      background: notInterested ? "#111118" : savedRating ? `linear-gradient(135deg, #1a1a2e 60%, ${RATING_COLORS[savedRating]}18)` : "linear-gradient(135deg, #1a1a2e, #1a1a3a)",
-      border: notInterested ? "1px solid #2a2a3a" : savedRating ? `1px solid ${RATING_COLORS[savedRating]}55` : "1px solid #3a3a6a",
-      borderRadius: 14, padding: 18, opacity: notInterested ? 0.5 : 1
+      background: notInterested ? "#111118" : notTonight ? "#0f0f1a" : savedRating ? `linear-gradient(135deg, #1a1a2e 60%, ${RATING_COLORS[savedRating]}18)` : "linear-gradient(135deg, #1a1a2e, #1a1a3a)",
+      border: notInterested ? "1px solid #2a2a3a" : notTonight ? "1px solid #2a2a5a" : savedRating ? `1px solid ${RATING_COLORS[savedRating]}55` : "1px solid #3a3a6a",
+      borderRadius: 14, padding: 18, opacity: notInterested ? 0.45 : notTonight ? 0.6 : 1, transition: "all 0.2s"
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700, color: "#e8e8ff" }}>
@@ -33,24 +33,31 @@ function RecCard({ rec, savedRating, onRate, onNotInterested, notInterested }) {
       </div>
       <div style={{ color: "#aaaacc", fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>{rec.reason}</div>
       <div>
-        <div style={{ fontSize: 10, color: "#6666aa", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
-          {savedRating ? "Your Rating" : "Rate if you've seen it"}
+        <div style={{ fontSize: 10, color: "#6666aa", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          {savedRating ? "Your Rating" : "Respond"}
         </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
           {[1,2,3,4,5].map(v => (
             <button key={v} onClick={() => onRate(v === savedRating ? null : v)}
               style={{
                 flex: 1, background: savedRating === v ? RATING_COLORS[v] + "33" : "#0d0d1a",
                 border: `2px solid ${savedRating === v ? RATING_COLORS[v] : "#2a2a4a"}`,
-                borderRadius: 12, padding: "8px 4px", fontSize: 22, cursor: "pointer",
+                borderRadius: 12, padding: "8px 2px", fontSize: 20, cursor: "pointer",
                 transition: "all 0.15s", transform: savedRating === v ? "scale(1.08)" : "scale(1)", lineHeight: 1
               }}>{RATING_EMOJIS[v]}</button>
           ))}
+          <button onClick={onNotTonight} title="Not Tonight"
+            style={{
+              background: notTonight ? "#1a1a3a" : "#0d0d1a",
+              border: notTonight ? "2px solid #8888ff" : "2px solid #2a2a4a",
+              borderRadius: 12, padding: "8px 8px", fontSize: 16, cursor: "pointer",
+              transition: "all 0.15s", lineHeight: 1
+            }}>🌙</button>
           <button onClick={onNotInterested} title="Not Interested"
             style={{
               background: notInterested ? "#3a1a1a" : "#0d0d1a",
               border: notInterested ? "2px solid #f8717188" : "2px solid #2a2a4a",
-              borderRadius: 12, padding: "8px 10px", fontSize: 18, cursor: "pointer",
+              borderRadius: 12, padding: "8px 8px", fontSize: 16, cursor: "pointer",
               transition: "all 0.15s", lineHeight: 1
             }}>🚫</button>
         </div>
@@ -74,6 +81,7 @@ export default function App() {
   const [recResults, setRecResults] = useState(null);
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState("");
+  const [notTonightList, setNotTonightList] = useState([]);
   const [queueLoading, setQueueLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const topRef = useRef(null);
@@ -103,7 +111,11 @@ export default function App() {
     setSaved(newSaved);
     setPending({});
     setBatchIndex(prev => prev + BATCH_SIZE);
-    setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 50);
   }
 
   async function refillQueue() {
@@ -147,6 +159,11 @@ export default function App() {
     const key = movie ? movie.id : "custom_" + rec.title.replace(/\s+/g, "_").toLowerCase();
     setSaved(prev => ({ ...prev, [key]: { ...prev[key], notInterested: true, title: rec.title, year: rec.year } }));
     setRecResults(prev => prev.map(r => r.title === rec.title ? { ...r, notInterested: true, savedRating: null } : r));
+    setNotTonightList(prev => prev.filter(t => t !== rec.title));
+  }
+
+  function toggleNotTonight(rec) {
+    setNotTonightList(prev => prev.includes(rec.title) ? prev.filter(t => t !== rec.title) : [...prev, rec.title]);
   }
 
   function getRecRating(rec) {
@@ -162,6 +179,10 @@ export default function App() {
     const key = "custom_" + rec.title.replace(/\s+/g, "_").toLowerCase();
     return !!saved[key]?.notInterested;
   }
+
+  const allRecsResponded = recResults && recResults.length > 0 && recResults.every(r =>
+    getRecRating(r) || isNotInterested(r) || notTonightList.includes(r.title)
+  );
 
   async function generateProfile(genre) {
     setLoadingProfile(genre);
@@ -184,6 +205,7 @@ export default function App() {
     setRecLoading(true);
     setRecResults(null);
     setRecError("");
+    setNotTonightList([]);
     const lines = [1,2,3,4,5].map(v => {
       const titles = MOVIES.filter(m => saved[m.id]?.rating === v).map(m => m.title);
       return titles.length ? `${v}/5: ${titles.join(", ")}` : null;
@@ -276,6 +298,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
+
         {tab === "rate" && (
           <div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
@@ -305,7 +328,9 @@ export default function App() {
                       onChange={vals => setPending(prev => ({ ...prev, [m.id]: vals }))} />
                   ))}
                 </div>
-                <button onClick={submitBatch} style={{ width: "100%", padding: 14, background: "linear-gradient(135deg, #3a3a9a, #5a3a9a)", border: "none", borderRadius: 14, color: "#e8e8ff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}>Submit & Next 5 →</button>
+                <button onClick={submitBatch} style={{ width: "100%", padding: 14, background: "linear-gradient(135deg, #3a3a9a, #5a3a9a)", border: "none", borderRadius: 14, color: "#e8e8ff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}>
+                  Submit & Next 5 →
+                </button>
               </div>
             )}
           </div>
@@ -378,11 +403,24 @@ export default function App() {
                 {recLoading ? "✨ Finding your films..." : "✨ Get Recommendations"}
               </button>
             </div>
+
             {recError && <p style={{ color: "#f87171", fontFamily: "monospace", fontSize: 12 }}>Error: {recError}</p>}
+
             {recResults && recResults.map((r, i) => (
-              <RecCard key={i} rec={r} savedRating={getRecRating(r)} notInterested={isNotInterested(r)}
-                onRate={rating => rateRecMovie(r, rating)} onNotInterested={() => notInterestedRec(r)} />
+              <RecCard key={i} rec={r}
+                savedRating={getRecRating(r)}
+                notInterested={isNotInterested(r)}
+                notTonight={notTonightList.includes(r.title)}
+                onRate={rating => rateRecMovie(r, rating)}
+                onNotInterested={() => notInterestedRec(r)}
+                onNotTonight={() => toggleNotTonight(r)} />
             ))}
+
+            {allRecsResponded && (
+              <button onClick={getRecs} disabled={recLoading} style={{ width: "100%", padding: 14, background: "linear-gradient(135deg, #3a3a9a, #5a3a9a)", border: "none", borderRadius: 14, color: "#e8e8ff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}>
+                {recLoading ? "✨ Finding more..." : "✨ Get New Recs"}
+              </button>
+            )}
           </div>
         )}
       </div>
