@@ -191,7 +191,27 @@ export default function App() {
       const titles = movies.filter(m => saved[m.id]?.rating === v).map(m => m.title);
       return titles.length ? `${v}/5: ${titles.join(", ")}` : null;
     }).filter(Boolean).join("\n");
-    const prompt = `Analyze this person's ${genre} movie taste.\nRatings:\n${lines}\nGive a punchy 4-6 word title and 2-3 sentences on patterns. Return JSON only: {"title":"...","description":"..."}`;
+    const allRatedLines = [1,2,3,4,5].map(v => {
+      const titles = MOVIES.filter(m => saved[m.id]?.rating === v).map(m => m.title);
+      return titles.length ? `${v}/5: ${titles.join(", ")}` : null;
+    }).filter(Boolean).join("\n");
+
+    const prompt = `You are a witty, insightful film critic writing a personality profile for someone based on their movie taste.
+
+Their ${genre} ratings:
+${lines}
+
+All their ratings across all genres:
+${allRatedLines || "same as above"}
+
+Write a personality profile that:
+1. Has a punchy, fun 4-6 word title (like a magazine archetype — e.g. "The Reluctant Intellectual", "Controlled Chaos Enthusiast")
+2. Tells them WHO THEY ARE as a person based on these movies — not just what films they like. What does this say about their values, how they see the world, what they need from a movie experience?
+3. Calls out specific films as evidence — e.g. "The fact that you gave Gladiator a perfect score but found Tenet boring says everything..."
+4. Has a playful, warm tone — like a smart friend who knows you well, not a film school essay
+5. 3-4 sentences total
+
+Return JSON only: {"title":"...","description":"..."}`;
     try {
       const text = await aiComplete(prompt);
       setProfiles(prev => ({ ...prev, [genre]: extractJSON(text, "object") }));
@@ -225,7 +245,7 @@ export default function App() {
       `Vibe: ${recVibe || "any"}`,
       "Avoids romance, horror, gratuitous violence. English only.",
       "Streaming: Max, Hulu, Apple TV+, Amazon Prime, Disney+, Peacock. Renting ok.",
-      "Return JSON array: [{\"title\":\"...\",\"year\":2020,\"reason\":\"...\",\"streaming\":\"...\"}]"
+      "Keep each reason to 15 words max. Return JSON array: [{\"title\":\"...\",\"year\":2020,\"reason\":\"...\",\"streaming\":\"...\"}]"
     ].filter(Boolean).join("\n\n");
     try {
       const text = await aiComplete(prompt);
@@ -311,6 +331,7 @@ export default function App() {
                 <button onClick={refillQueue} disabled={queueLoading} style={{ background: "linear-gradient(135deg, #3a3a9a, #5a3a9a)", border: "none", borderRadius: 12, padding: "12px 24px", color: "#e8e8ff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Playfair Display', serif" }}>
                   {queueLoading ? "✨ Finding films..." : "✨ AI Refill Queue"}
                 </button>
+                {queueError && <p style={{ color: "#f87171", fontFamily: "monospace", fontSize: 11, marginTop: 12 }}>{queueError}</p>}
               </div>
             ) : batch.length === 0 ? (
               <div style={{ textAlign: "center", padding: 40, color: "#6666aa", fontFamily: "monospace" }}>
