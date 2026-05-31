@@ -118,32 +118,43 @@ export default function App() {
     }, 50);
   }
 
+  const [queueError, setQueueError] = useState("");
+
   async function refillQueue() {
     setQueueLoading(true);
+    setQueueError("");
     const lines = [1,2,3,4,5].map(v => {
       const titles = MOVIES.filter(m => saved[m.id]?.rating === v).map(m => m.title);
       return titles.length ? `${v}/5: ${titles.join(", ")}` : null;
     }).filter(Boolean).join("\n");
-    const notInt = Object.values(saved).filter(s => s.notInterested).map(s => s.title).join(", ");
-    const alreadyInList = MOVIES.map(m => m.title).join(", ");
+    const notInt = Object.values(saved).filter(s => s.notInterested).map(s => s.title).join(", ") || "none";
     const prompt = [
       "You are a movie expert. Suggest 25 films for Matt to rate based on his taste.",
       `His ratings (1=worst 5=best):\n${lines || "none yet"}`,
-      `NOT interested in: ${notInt || "none"}`,
-      `Already in his list (do NOT suggest these): ${alreadyInList}`,
+      `He is NOT interested in: ${notInt}`,
       `Genre focus: ${activeGenre !== "All" ? activeGenre : "any"}`,
       "He avoids romance, horror, gratuitous violence. English-language only.",
-      "Return a JSON array of 25 films: [{\"title\":\"...\",\"year\":2020,\"genre\":\"Action\"}]"
+      "Suggest well-known or critically acclaimed films he may not have seen.",
+      "Return a JSON array of 25 films: [\"title\":\"...\",\"year\":2020,\"genre\":\"Action\"}]"
     ].join("\n\n");
     try {
       const text = await aiComplete(prompt);
-      const suggestions = extractJSON(text, "array");
+      let suggestions;
+      try { suggestions = extractJSON(text, "array"); }
+      catch(e) {
+        const matches = text.match(/\{[^{}]*"title"[^{}]*\}/g);
+        if (matches && matches.length > 0) {
+          suggestions = matches.map(m => { try { return JSON.parse(m); } catch { return null; } }).filter(Boolean);
+        } else { throw e; }
+      }
       const newMovies = suggestions.slice(0, 25).map((s, i) => ({
         id: "ai_" + Date.now() + "_" + i,
         title: s.title, year: s.year || "", genre: s.genre || activeGenre || "Action", ai: true
       }));
       setQueue(prev => [...prev, ...newMovies]);
-    } catch(e) { console.error("Queue refill error:", e.message); }
+    } catch(e) {
+      setQueueError("Refill failed: " + e.message);
+    }
     setQueueLoading(false);
   }
 
