@@ -31,4 +31,19 @@ exports.handler = async function(event) {
       };
     }
 
-    let text = data.can
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: [{ type: "text", text }]
+      })
+    };
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ type: "error", error: { message: err.message } })
+    };
+  }
+};
