@@ -135,7 +135,7 @@ export default function App() {
       `Genre focus: ${activeGenre !== "All" ? activeGenre : "any"}`,
       "He avoids romance, horror, gratuitous violence. English-language only.",
       "Suggest well-known or critically acclaimed films he may not have seen.",
-      "Return a JSON array of 25 films: [\"title\":\"...\",\"year\":2020,\"genre\":\"Action\"}]"
+      "Return a JSON array of 25 films. Example: [{\"title\":\"The Departed\",\"year\":2006,\"genre\":\"Thriller/Suspense\"},{\"title\":\"Heat\",\"year\":1995,\"genre\":\"Action\"}]"
     ].join("\n\n");
     try {
       const text = await aiComplete(prompt);
