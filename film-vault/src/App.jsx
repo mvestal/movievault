@@ -129,29 +129,31 @@ export default function App() {
     }).filter(Boolean).join("\n");
     const notInt = Object.values(saved).filter(s => s.notInterested).map(s => s.title).join(", ") || "none";
     const prompt = [
-      "You are a movie expert. Suggest 25 films for Matt to rate based on his taste.",
+      "You are a movie expert. Suggest 10 films for Matt to rate based on his taste.",
       `His ratings (1=worst 5=best):\n${lines || "none yet"}`,
       `He is NOT interested in: ${notInt}`,
       `Genre focus: ${activeGenre !== "All" ? activeGenre : "any"}`,
       "He avoids romance, horror, gratuitous violence. English-language only.",
       "Suggest well-known or critically acclaimed films he may not have seen.",
-      "Return a JSON array of 25 films. Example: [{\"title\":\"The Departed\",\"year\":2006,\"genre\":\"Thriller/Suspense\"},{\"title\":\"Heat\",\"year\":1995,\"genre\":\"Action\"}]"
+      "Return a JSON array of 10 films. Example: [{\"title\":\"The Departed\",\"year\":2006,\"genre\":\"Thriller/Suspense\"},{\"title\":\"Heat\",\"year\":1995,\"genre\":\"Action\"}]"
     ].join("\n\n");
     try {
       const text = await aiComplete(prompt);
+      setQueueError("Got response, parsing... preview: " + text.substring(0, 80));
       let suggestions;
       try { suggestions = extractJSON(text, "array"); }
       catch(e) {
         const matches = text.match(/\{[^{}]*"title"[^{}]*\}/g);
         if (matches && matches.length > 0) {
           suggestions = matches.map(m => { try { return JSON.parse(m); } catch { return null; } }).filter(Boolean);
-        } else { throw e; }
+        } else { throw new Error("Parse failed. Raw: " + text.substring(0, 150)); }
       }
-      const newMovies = suggestions.slice(0, 25).map((s, i) => ({
+      const newMovies = suggestions.slice(0, 10).map((s, i) => ({
         id: "ai_" + Date.now() + "_" + i,
         title: s.title, year: s.year || "", genre: s.genre || activeGenre || "Action", ai: true
       }));
       setQueue(prev => [...prev, ...newMovies]);
+      setQueueError("");
     } catch(e) {
       setQueueError("Refill failed: " + e.message);
     }
