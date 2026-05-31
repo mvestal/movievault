@@ -14,7 +14,11 @@ exports.handler = async function(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 }
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.7,
+          responseMimeType: "application/json"
+        }
       })
     });
 
@@ -27,9 +31,4 @@ exports.handler = async function(event) {
       };
     }
 
-    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    text = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+    let text = data.can
