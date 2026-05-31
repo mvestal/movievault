@@ -27,20 +27,9 @@ exports.handler = async function(event) {
       };
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    text = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
 
-    // Return in Anthropic-compatible format so the frontend doesn't need changing
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: [{ type: "text", text }]
-      })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ type: "error", error: { message: err.message } })
-    };
-  }
-};
